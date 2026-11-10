@@ -88,11 +88,10 @@ class JohnConnor(HumanAgent):
 
         if threats:
             self.state = "evading"
-
             threat_position = threats[0][1]
             safe_zone = self.find_safe_zone(self.position)
 
-            best_move = max(
+            return max(
                 available_moves,
                 key=lambda position: (
                     2 * (
@@ -107,10 +106,7 @@ class JohnConnor(HumanAgent):
                 )
             )
 
-            return best_move
-
         self.state = "moving_to_safety"
-
         safe_zone = self.find_safe_zone(self.position)
 
         if safe_zone is None:
@@ -149,27 +145,57 @@ class JohnConnor(HumanAgent):
         return False
 
 
-if __name__ == "__main__":
-    environment = Environment()
+def test_no_threat():
+    print("\n========== TEST 1: NO THREAT ==========")
 
+    environment = Environment()
+    john = JohnConnor(environment, (1, 1))
+
+    john.take_turn()
+
+    print("Position:", john.position)
+    print("State:", john.state)
+    print("Energy:", john.energy)
+
+
+def test_threat_detection():
+    print("\n========== TEST 2: NEARBY THREAT ==========")
+
+    environment = Environment()
     john = JohnConnor(environment, (1, 1))
 
     environment.place_agent("T-1000", (4, 1))
 
-    print("Initial Environment:")
-    environment.display_environment()
-
-    print("\nJohn Connor's Decision:")
     print("Detected Threats:", john.perceive())
-    print("Current State:", john.state)
 
     john.take_turn()
 
-    print("\nAfter John Connor's Movement:")
     print("Position:", john.position)
     print("State:", john.state)
-    print("Health:", john.health)
     print("Energy:", john.energy)
     print("Successful Evasions:", john.successful_evasions)
 
+
+def test_obstacle_avoidance():
+    print("\n========== TEST 3: OBSTACLE ==========")
+
+    environment = Environment()
+    john = JohnConnor(environment, (4, 5))
+
+    environment.place_agent("T-1000", (18, 1))
+
+    print("Available Neighbours:", environment.get_neighbours(john.position))
+
+    john.take_turn()
+
+    print("Position:", john.position)
+    print("State:", john.state)
+    print("Energy:", john.energy)
+
     environment.display_environment()
+
+
+if __name__ == "__main__":
+    test_no_threat()
+    test_threat_detection()
+    test_obstacle_avoidance()
