@@ -75,8 +75,7 @@ class JohnConnor(HumanAgent):
         )
 
         available_moves = [
-            position
-            for position in neighbours
+            position for position in neighbours
             if position not in occupied_positions
         ]
 
@@ -145,6 +144,170 @@ class JohnConnor(HumanAgent):
         return False
 
 
+class T800Guardian(Agent):
+    def __init__(self, environment, position):
+        super().__init__("T-800", environment, position)
+        self.detection_range = 8
+        self.detected_threats = []
+        self.protection_state = "following"
+        self.interceptions = 0
+        self.interception_target = None
+        self.intercepted_threat_position = None
+
+    def distance(self, position_a, position_b):
+        return (
+            abs(position_a[0] - position_b[0])
+            + abs(position_a[1] - position_b[1])
+        )
+
+    def perceive(self):
+        self.detected_threats = []
+
+        for name, position in self.environment.agent_positions.items():
+            if name == "T-1000":
+                distance = self.distance(self.position, position)
+
+                if distance <= self.detection_range:
+                    self.detected_threats.append((name, position))
+
+        return self.detected_threats
+
+    def get_available_moves(self):
+        neighbours = self.environment.get_neighbours(self.position)
+
+        occupied_positions = set(
+            self.environment.agent_positions.values()
+        )
+
+        return [
+            position for position in neighbours
+            if position not in occupied_positions
+        ]
+
+    def find_interception_position(self, john_position, threat_position):
+        occupied_positions = set(
+            self.environment.agent_positions.values()
+        )
+
+        candidates = [
+            position
+            for position in self.environment.get_neighbours(threat_position)
+            if position not in occupied_positions
+            and self.distance(position, john_position)
+            < self.distance(threat_position, john_position)
+        ]
+
+        if not candidates:
+            return None
+
+        return min(
+            candidates,
+            key=lambda position: (
+                self.distance(position, john_position),
+                self.distance(self.position, position)
+            )
+        )
+
+    def follow_john(self, john_position):
+        available_moves = self.get_available_moves()
+
+        if not available_moves:
+            self.state = "blocked"
+            return False
+
+        current_distance = self.distance(self.position, john_position)
+
+        if current_distance <= 1:
+            self.state = "guarding"
+            self.protection_state = "protecting"
+            return False
+
+        next_position = min(
+            available_moves,
+            key=lambda position: self.distance(position, john_position)
+        )
+
+        self.state = "following"
+        self.protection_state = "protecting"
+
+        return self.move(next_position)
+
+    def intercept_threat(self, john_position, threat_position):
+        available_moves = self.get_available_moves()
+
+        if not available_moves:
+            self.state = "blocked"
+            return False
+
+        if self.intercepted_threat_position == threat_position:
+            self.state = "guarding"
+            self.protection_state = "protecting"
+            return False
+
+        if self.interception_target is None:
+            self.interception_target = self.find_interception_position(
+                john_position,
+                threat_position
+            )
+
+        if self.interception_target is None:
+            self.state = "guarding"
+            self.protection_state = "protecting"
+            return False
+
+        if self.position == self.interception_target:
+            self.interceptions += 1
+            self.intercepted_threat_position = threat_position
+            self.interception_target = None
+            self.state = "guarding"
+            self.protection_state = "protecting"
+            return True
+
+        next_position = min(
+            available_moves,
+            key=lambda position: (
+                self.distance(position, self.interception_target),
+                self.distance(position, john_position)
+            )
+        )
+
+        self.state = "intercepting"
+        self.protection_state = "intercepting"
+
+        moved = self.move(next_position)
+
+        if moved and self.position == self.interception_target:
+            self.interceptions += 1
+            self.intercepted_threat_position = threat_position
+            self.interception_target = None
+            self.state = "guarding"
+            self.protection_state = "protecting"
+
+        return moved
+
+    def take_turn(self, john):
+        threats = self.perceive()
+
+        if threats:
+            threat_position = threats[0][1]
+
+            distance_to_john = self.distance(
+                john.position,
+                threat_position
+            )
+
+            if distance_to_john <= 4:
+                return self.intercept_threat(
+                    john.position,
+                    threat_position
+                )
+
+        self.interception_target = None
+        self.intercepted_threat_position = None
+
+        return self.follow_john(john.position)
+
+
 def test_no_threat():
     print("\n========== TEST 1: NO THREAT ==========")
 
@@ -195,7 +358,42 @@ def test_obstacle_avoidance():
     environment.display_environment()
 
 
+def test_t800_guardian():
+    print("\n========== TEST 4: T-800 INTERCEPTION ==========")
+
+    environment = Environment()
+
+    john = JohnConnor(environment, (1, 1))
+    guardian = T800Guardian(environment, (1, 2))
+
+    environment.place_agent("T-1000", (4, 1))
+
+    print("John Position:", john.position)
+    print("T-800 Position:", guardian.position)
+    print("T-1000 Position:", environment.agent_positions["T-1000"])
+
+    print("\nInterception Test:")
+
+    for turn in range(1, 8):
+        guardian.take_turn(john)
+
+        print(f"\nTurn {turn}")
+        print("T-800 Position:", guardian.position)
+        print("Interception Target:", guardian.interception_target)
+        print("State:", guardian.state)
+        print("Protection State:", guardian.protection_state)
+        print("Successful Interceptions:", guardian.interceptions)
+        print("Energy:", guardian.energy)
+
+        if guardian.interceptions > 0:
+            break
+
+    print("\nFinal Environment:")
+    environment.display_environment()
+
+
 if __name__ == "__main__":
     test_no_threat()
     test_threat_detection()
     test_obstacle_avoidance()
+    test_t800_guardian()
