@@ -358,7 +358,7 @@ def test_obstacle_avoidance():
     environment.display_environment()
 
 
-def test_t800_guardian():
+def test_t800_interception():
     print("\n========== TEST 4: T-800 INTERCEPTION ==========")
 
     environment = Environment()
@@ -371,8 +371,6 @@ def test_t800_guardian():
     print("John Position:", john.position)
     print("T-800 Position:", guardian.position)
     print("T-1000 Position:", environment.agent_positions["T-1000"])
-
-    print("\nInterception Test:")
 
     for turn in range(1, 8):
         guardian.take_turn(john)
@@ -392,8 +390,67 @@ def test_t800_guardian():
     environment.display_environment()
 
 
+def test_t800_following():
+    print("\n========== TEST 5: T-800 FOLLOWING JOHN ==========")
+
+    environment = Environment()
+
+    john = JohnConnor(environment, (6, 5))
+    guardian = T800Guardian(environment, (1, 1))
+
+    print("Initial John Position:", john.position)
+    print("Initial T-800 Position:", guardian.position)
+
+    guardian.take_turn(john)
+
+    print("\nAfter T-800 Movement:")
+    print("John Position:", john.position)
+    print("T-800 Position:", guardian.position)
+    print("T-800 State:", guardian.state)
+    print("Protection State:", guardian.protection_state)
+    print("Energy:", guardian.energy)
+
+    environment.display_environment()
+
+
+def test_t800_guarding():
+    print("\n========== TEST 6: T-800 GUARDING JOHN ==========")
+
+    environment = Environment()
+
+    john = JohnConnor(environment, (6, 6))
+    guardian = T800Guardian(environment, (6, 7))
+
+    initial_position = guardian.position
+    initial_energy = guardian.energy
+
+    guardian.take_turn(john)
+
+    print("John Position:", john.position)
+    print("T-800 Initial Position:", initial_position)
+    print("T-800 Final Position:", guardian.position)
+    print("T-800 State:", guardian.state)
+    print("Protection State:", guardian.protection_state)
+    print("Energy:", guardian.energy)
+    print("Interceptions:", guardian.interceptions)
+
+    print(
+        "Maintained Guard Position:",
+        guardian.position == initial_position
+    )
+
+    print(
+        "Energy Unchanged:",
+        guardian.energy == initial_energy
+    )
+
+    environment.display_environment()
+
+
 if __name__ == "__main__":
     test_no_threat()
     test_threat_detection()
     test_obstacle_avoidance()
-    test_t800_guardian()
+    test_t800_interception()
+    test_t800_following()
+    test_t800_guarding()
